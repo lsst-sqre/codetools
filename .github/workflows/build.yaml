@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  pull_request:
 
 jobs:
   docker:
@@ -16,6 +17,7 @@ jobs:
         id: build
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          docker_token: ${{ secrets.DOCKER_TOKEN }}
           dockerfile: docker/Dockerfile
           platforms: linux/amd64,linux/arm64
           image: ${{ github.repository }}
