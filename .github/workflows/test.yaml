@@ -1,0 +1,265 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+  pull_request:
+
+jobs:
+  tests:
+    strategy:
+      matrix:
+        include:
+          - test: pytest
+          - test: github-tag-release
+          - test: github-tag-teams
+          - test: github-decimate-org
+          - test: github-fork-org
+          - test: github-get-ratelimit
+          - test: github-auth
+          - test: github-list-repos
+          - test: github-mv-repos-to-team
+          - test: github-auth-debug
+            env:
+              DM_SQUARE_DEBUG: 'bogus_non_int_able_value'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.8
+      - name: Install deps
+        run: |
+         pip install --upgrade pip setuptools_scm 'setuptools==58'
+         #if [ "${{ matrix.test }}" == "github-tag-release" ]; then
+         python setup.py sdist
+         pip install dist/sqre-codekit-*.tar.gz
+            #fi
+      - name: Run Tests
+        env:
+          SQREADMIN_TOKEN: ${{ secrets.SQREADMIN_TOKEN }}
+          DM_SQUARE_DEBUG: ${{ matrix.env.DM_SQUARE_DEBUG || '' }}
+        run: |
+          set -e
+          TEST=${{ matrix.test }}
+          case "$TEST" in
+            pytest)
+              python setup.py test
+              ;;
+
+            github-tag-release)
+              set -e
+              # check argparse help formatting for errors
+              "$TEST" -h
+
+              if [ -n "$SQREADMIN_TOKEN" ]; then
+                # verify a past weekly tag -- the eups tag name and git tag names are
+                # in sync except for s/_/-/
+                "$TEST" \
+                  --verify \
+                  --debug \
+                  --limit 10 \
+                  --org 'lsst' \
+                  --allow-team 'Data Management' \
+                  --allow-team 'DM Externals' \
+                  --external-team 'DM Externals' \
+                  --deny-team 'DM Auxilliaries' \
+                  --email 'sqre-admin@lists.lsst.org' \
+                  --user 'sqreadmin' \
+                  --token "$SQREADMIN_TOKEN" \
+                  --ignore-git-tagger \
+                  --ignore-git-message \
+                  --manifest 'b3595' \
+                  'w.2018.18'
+
+                # verify a past official release where the git tag was generated from
+                # an rcX eups tag.  This validates the location of the git tags but
+                # does not inspect the official eups release tag at all.
+                "$TEST" \
+                  --verify \
+                  --debug \
+                  --limit 10 \
+                  --org 'lsst' \
+                  --allow-team 'Data Management' \
+                  --allow-team 'DM Externals' \
+                  --external-team 'DM Externals' \
+                  --deny-team 'DM Auxilliaries' \
+                  --email 'sqre-admin@lists.lsst.org' \
+                  --user 'sqreadmin' \
+                  --token "$SQREADMIN_TOKEN" \
+                  --ignore-git-tagger \
+                  --ignore-git-message \
+                  --eups-tag 'v15_0_rc3' \
+                  --manifest 'b3504' \
+                  '15.0'
+
+                # verify a past official release using the eups tag. As the eups
+                # product version strings will be out of sync between the versiondb
+                # manifest it was based on and the eups tag, the eups product version
+                # strings have to be ignored.
+                "$TEST" \
+                  --verify \
+                  --debug \
+                  --limit 10 \
+                  --org 'lsst' \
+                  --allow-team 'Data Management' \
+                  --allow-team 'DM Externals' \
+                  --external-team 'DM Externals' \
+                  --deny-team 'DM Auxilliaries' \
+                  --email 'sqre-admin@lists.lsst.org' \
+                  --user 'sqreadmin' \
+                  --token "$SQREADMIN_TOKEN" \
+                  --ignore-manifest-versions \
+                  --ignore-git-tagger \
+                  --ignore-git-message \
+                  --manifest 'b3504' \
+                  '15.0'
+
+                "$TEST" \
+                  --dry-run \
+                  --debug \
+                  --limit 10 \
+                  --org 'lsst' \
+                  --allow-team 'Data Management' \
+                  --allow-team 'DM Externals' \
+                  --external-team 'DM Externals' \
+                  --deny-team 'DM Auxilliaries' \
+                  --email 'sqre-admin@lists.lsst.org' \
+                  --user 'sqreadmin' \
+                  --token "$SQREADMIN_TOKEN" \
+                  --ignore-manifest-versions \
+                  --ignore-git-tagger \
+                  --ignore-git-message \
+                  --manifest 'b3595' \
+                  --manifest-only \
+                  'w.2018.18'
+              else
+                echo "Unable to test without secure env vars."
+              fi
+              ;;
+
+            github-tag-teams)
+             "$TEST" -h
+              if [ -n "$SQREADMIN_TOKEN" ]; then
+              # check argparse help formatting for errors
+               # create
+               "$TEST" \
+                 --debug \
+                 --dry-run \
+                 --org 'lsst' \
+                 --allow-team 'DM Auxilliaries' \
+                 --deny-team 'DM Externals' \
+                 --token "$SQREADMIN_TOKEN" \
+                 --user 'sqreadmin' \
+                 --email 'sqre-admin@lists.lsst.org' \
+                 --tag 'foo' \
+                 --tag 'bar'
+
+               # --delete
+               "$TEST" \
+                 --debug \
+                 --dry-run \
+                 --delete \
+                 --org 'lsst' \
+                 --allow-team 'DM Auxilliaries' \
+                 --deny-team 'DM Externals' \
+                 --token "$SQREADMIN_TOKEN" \
+                 --user 'sqreadmin' \
+                 --email 'sqre-admin@lists.lsst.org' \
+                 --tag 'foo' \
+                 --tag 'bar'
+             else
+               echo "Unable to test without travis secure env vars."
+             fi
+              ;;
+
+            github-decimate-org)
+              "$TEST" -h
+              if [ -n "$SQREADMIN_TOKEN" ]; then
+                "$TEST" \
+                  --dry-run \
+                  --debug \
+                  --org 'batmanuel-sandbox' \
+                  --token "$SQREADMIN_TOKEN" \
+                  --delete-repos \
+                  --delete-repos-limit 3 \
+                  --delete-teams \
+                  --delete-teams-limit 3
+              else
+                echo "Unable to test without travis secure env vars."
+              fi
+              ;;
+
+            github-fork-org)
+              # check argparse help formatting for errors
+              "$TEST" -h
+              if [ -n "$SQREADMIN_TOKEN" ]; then
+                "$TEST" \
+                  --dry-run \
+                  --debug \
+                  --src-org 'lsst' \
+                  --dst-org 'batmanuel-sandbox' \
+                  --token "$SQREADMIN_TOKEN" \
+                  --team 'DM Auxilliaries' \
+                  --team 'DM Externals' \
+                  --team 'Data Management' \
+                  --limit 10
+                  #--copy-teams
+              else
+                echo "Unable to test without travis secure env vars."
+              fi
+              ;;
+
+            github-get-ratelimit)
+            # check argparse help formatting for errors
+             "$TEST" -h
+
+              if [ -n "$SQREADMIN_TOKEN" ]; then
+               "$TEST" \
+                 --debug \
+                 --token "$SQREADMIN_TOKEN"
+              else
+                 echo "le to test without travis secure env vars."
+              fi
+              ;;
+
+            github-auth-debug)
+              TEST=github-auth
+              # should fail
+              "$TEST" -u foo || true
+              #[[ $? == 1 ]]
+              ;;
+            *)
+              "$TEST" -h
+              ;;
+
+          esac
+  publish:
+    needs: tests
+    name: Upload release to PyPI
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-20.04
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    environment:
+      name: pypi
+      url: https://pypi.org/p/<your-pypi-project-name>
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.6'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install setuptools wheel twine
+      - name: Build
+        run: |
+          python setup.py sdist bdist_wheel
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

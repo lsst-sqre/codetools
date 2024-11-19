@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Setup Tools Script"""
-import os
 import codecs
-from setuptools import setup, find_packages
+import os
+
+from setuptools import find_packages, setup
 
 PACKAGENAME = 'sqre-codekit'
 DESCRIPTION = 'LSST Data Management SQuaRE code management tools'
@@ -14,9 +15,7 @@ LICENSE = 'MIT'
 
 def read(filename):
     """Convenience function for includes"""
-    full_filename = os.path.join(
-        os.path.abspath(os.path.dirname(__file__)),
-        filename)
+    full_filename = os.path.join(os.path.abspath(os.path.dirname(__file__)), filename)
     return codecs.open(full_filename, 'r', 'utf-8').read()
 
 
@@ -43,7 +42,7 @@ setup(
         'MapGitConfig==1.1',
         'progressbar2==3.37.1',
         'public==1.0',
-        'pygithub==1.40a3',
+        'pygithub==1.59',
         'pyyaml>=5.1',
         'requests>=2.8.1,<3.0.0',
     ],
@@ -52,9 +51,10 @@ setup(
         'setuptools_scm',
     ],
     tests_require=[
-        'flake8>=3.7.7,<3.8',
-        'pytest>=4.3,<5',
-        'pytest-flake8>=1.0.4,<2',
+        'flake8',
+        'pytest<5',
+        # Removed due to incompatibility
+        # 'pytest-flake8',
         'responses>=0.9.0,<1',
     ],
     # package_data={},
@@ -69,5 +69,5 @@ setup(
             'github-tag-release = codekit.cli.github_tag_release:main',
             'github-tag-teams = codekit.cli.github_tag_teams:main',
         ]
-    }
+    },
 )
