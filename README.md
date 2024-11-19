@@ -1,5 +1,3 @@
-[![Build Status](https://travis-ci.org/lsst-sqre/sqre-codekit.svg?branch=master)](https://travis-ci.org/lsst-sqre/sqre-codekit)
-
 # sqre-codekit
 
 LSST DM SQuaRE misc. code management tools
